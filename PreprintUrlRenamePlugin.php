@@ -32,17 +32,22 @@ class PreprintUrlRenamePlugin extends GenericPlugin
     {
         if (parent::register($category, $path, $mainContextId)) {
             if ($this->getEnabled($mainContextId)) {
-                // When OPS generates URLs referring to 'preprint', change it to 'submission'
-                Hook::add('PKPPageRouter::url', function(string $hookName, PKPRequest &$request, ?string &$newContext, ?string &$page, ?string &$op, ?array &$path, ?array &$params, ?string &$anchor, bool &$escape, ?string &$urlLocaleForPage, ?string &$result) : bool {
-                    if ($page == 'preprint') $page = 'submission';
+                // When OPS generates URLs referring to 'preprint', change it to 'postprint'
+                Hook::add('PKPPageRouter::url', function (string $hookName, array $params): bool {
+                    if ($page == 'preprint') {
+                        $page = 'postprint';
+                    }
                     return Hook::CONTINUE;
                 });
 
-                // When OPS receives requests for 'submission', map it to the preprint handler
-                Hook::add('LoadHandler', function(string $hookName, array $params) : bool {
-                    $page =& $params[0];
-                    $sourceFile =& $params[2];
-                    if ($page != 'submission') return Hook::CONTINUE;
+                // When OPS receives requests for 'postprint', map it to the preprint handler
+                Hook::add('LoadHandler', function (string $hookName, array $params): bool {
+                    $page = &$params[0];
+                    $sourceFile = &$params[2];
+
+                    if ($page != 'postprint') {
+                        return Hook::CONTINUE;
+                    }
 
                     $page = 'preprint';
                     $sourceFile = 'pages/preprint/index.php';
