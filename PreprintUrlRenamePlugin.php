@@ -32,28 +32,8 @@ class PreprintUrlRenamePlugin extends GenericPlugin
     {
         if (parent::register($category, $path, $mainContextId)) {
             if ($this->getEnabled($mainContextId)) {
-                // When OPS generates URLs referring to 'preprint', change it to 'postprint'
-                Hook::add('PKPPageRouter::url', function (string $hookName, array $params): bool {
-                    if ($page == 'preprint') {
-                        $page = 'postprint';
-                    }
-                    return Hook::CONTINUE;
-                });
-
-                // When OPS receives requests for 'postprint', map it to the preprint handler
-                Hook::add('LoadHandler', function (string $hookName, array $params): bool {
-                    $page = &$params[0];
-                    $sourceFile = &$params[2];
-
-                    if ($page != 'postprint') {
-                        return Hook::CONTINUE;
-                    }
-
-                    $page = 'preprint';
-                    $sourceFile = 'pages/preprint/index.php';
-
-                    return Hook::CONTINUE;
-                });
+                Hook::add('PKPPageRouter::url', [$this, 'renameUrlPages']);
+                Hook::add('LoadHandler', [$this, 'mapRenamedUrlPagesToHandler']);
             }
             return true;
         }
@@ -74,6 +54,41 @@ class PreprintUrlRenamePlugin extends GenericPlugin
     public function getDescription()
     {
         return 'Renames the "preprint" part of OPS URLs to something else.';
+    }
+
+    // When OPS generates URLs referring to 'preprint', change it to 'postprint'
+    public function renameUrlPages(string $hookName, array $params)
+    {
+        $page = &$params['page'];
+        $renamingMap = [
+            'preprint' => 'postprint',
+            'preprints' => 'postprints'
+        ];
+
+        if (isset($renamingMap[$page])) {
+            $page = $renamingMap[$page];
+        }
+
+        return Hook::CONTINUE;
+    }
+
+    // When OPS receives requests for 'postprint', map it to the preprint handler
+    public function mapRenamedUrlPagesToHandler(string $hookName, array $params)
+    {
+        $page = &$params[0];
+        $sourceFile = &$params[2];
+        $mapRenamedPages = [
+            'postprint' => ['page' => 'preprint', 'sourceFile' => 'pages/preprint/index.php'],
+            'postprints' => ['page' => 'preprints', 'sourceFile' => 'pages/preprints/index.php'],
+        ];
+
+        if (isset($mapRenamedPages[$page])) {
+            $renamedPageMap = $mapRenamedPages[$page];
+            $page = $renamedPageMap['page'];
+            $sourceFile = $renamedPageMap['sourceFile'];
+        }
+
+        return Hook::CONTINUE;
     }
 }
 
